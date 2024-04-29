@@ -1,9 +1,9 @@
 package com.github.lazygon.lunachatbridge.bukkit.lc;
 
-import com.github.ucchyocean.lc.command.DataMaps;
+import com.github.ucchyocean.lc3.command.DataMaps;
 
 public class DataMapsExtended extends DataMaps {
-    
+
     public static void putIntoInviteMap(String key, String value) {
         inviteMap.put(key, value);
     }

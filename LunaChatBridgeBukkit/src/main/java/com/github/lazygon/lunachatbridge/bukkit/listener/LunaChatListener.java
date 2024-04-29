@@ -1,16 +1,13 @@
 package com.github.lazygon.lunachatbridge.bukkit.listener;
 
-import java.io.ByteArrayOutputStream;
-import java.io.DataOutputStream;
-import java.util.List;
-
 import com.github.lazygon.lunachatbridge.bukkit.BukkitMain;
 import com.github.lazygon.lunachatbridge.bukkit.config.BungeeChannels;
 import com.github.lazygon.lunachatbridge.bukkit.lc.DataMapsExtended;
-import com.github.ucchyocean.lc.LunaChat;
 import com.github.ucchyocean.lc.channel.ChannelPlayer;
 import com.github.ucchyocean.lc.event.LunaChatChannelChatEvent;
-
+import com.github.ucchyocean.lc3.LunaChat;
+import com.github.ucchyocean.lc3.bukkit.event.LunaChatBukkitChannelChatEvent;
+import com.github.ucchyocean.lc3.member.ChannelMember;
 import org.bukkit.Bukkit;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
@@ -18,7 +15,12 @@ import org.bukkit.event.HandlerList;
 import org.bukkit.event.Listener;
 import org.bukkit.event.player.PlayerCommandPreprocessEvent;
 import org.bukkit.event.server.TabCompleteEvent;
+import org.bukkit.plugin.messaging.PluginMessageListener;
 import org.bukkit.util.StringUtil;
+
+import java.io.ByteArrayOutputStream;
+import java.io.DataOutputStream;
+import java.util.List;
 
 public class LunaChatListener implements Listener {
 
@@ -37,8 +39,8 @@ public class LunaChatListener implements Listener {
     }
 
     @EventHandler
-    private void onChat(LunaChatChannelChatEvent event) {
-        if (!event.getPlayer().isOnline()) {
+    private void onChat(LunaChatBukkitChannelChatEvent event) {
+        if (!event.getMember().isOnline()) {
             return;
         }
 
@@ -58,28 +60,28 @@ public class LunaChatListener implements Listener {
             out.writeUTF(event.getChannelName());
 
             // プレイヤー名
-            out.writeUTF(event.getPlayer().getName());
+            out.writeUTF(event.getMember().getName());
 
             // プレイヤー表示名
-            out.writeUTF(event.getPlayer().getDisplayName());
+            out.writeUTF(event.getMember().getDisplayName());
 
             // プレイヤープレフィックス
-            out.writeUTF(event.getPlayer().getPrefix());
+            out.writeUTF(event.getMember().getPrefix());
 
             // プレイヤーサフィックス
-            out.writeUTF(event.getPlayer().getSuffix());
+            out.writeUTF(event.getMember().getSuffix());
 
             // プレイヤーのいるワールド
-            out.writeUTF(event.getPlayer().getWorldName());
+            out.writeUTF(event.getMember().getWorldName());
 
             // メッセージ
             out.writeUTF(event.getPreReplaceMessage());
 
             // 日本語化するかどうか
-            out.writeBoolean(LunaChat.getInstance().getLunaChatAPI().isPlayerJapanize(event.getPlayer().getName()));
+            out.writeBoolean(LunaChat.getAPI().isPlayerJapanize(event.getMember().getName()));
 
             // カラーコードを使えるかどうか
-            out.writeBoolean(event.getPlayer().hasPermission("lunachat.allowcc"));
+            out.writeBoolean(event.getMember().hasPermission("lunachat.allowcc"));
 
             Bukkit.getServer().sendPluginMessage(PLUGIN, "lc:tobungee", byteOutStream.toByteArray());
             out.close();
@@ -108,7 +110,7 @@ public class LunaChatListener implements Listener {
      * {@link PluginMessages#onPluginMessageReceived(String, Player, byte[])} ->
      * {@link PluginMessages#sendTellMessage(ChannelPlayer, String, String)} ->
      * {@link LunaChatListener#onChat(LunaChatChannelChatEvent)}
-     * 
+     *
      * @param event
      */
     @EventHandler
@@ -152,7 +154,7 @@ public class LunaChatListener implements Listener {
         event.setCancelled(true);
         message = args[2];
 
-        PluginMessages.getInstance().sendTellMessage(ChannelPlayer.getChannelPlayer(inviter), invited, message);
+        PluginMessages.getInstance().sendTellMessage(ChannelMember.getChannelMember(inviter), invited, message);
     }
 
     /**
@@ -174,7 +176,7 @@ public class LunaChatListener implements Listener {
      * {@link PluginMessages#onPluginMessageReceived(String, Player, byte[])} ->
      * {@link PluginMessages#sendTellMessage(ChannelPlayer, String, String)} ->
      * {@link LunaChatListener#onChat(LunaChatChannelChatEvent)}
-     * 
+     *
      * @param event
      */
     @EventHandler
@@ -210,7 +212,7 @@ public class LunaChatListener implements Listener {
         event.setCancelled(true);
         message = args[1];
 
-        PluginMessages.getInstance().sendTellMessage(ChannelPlayer.getChannelPlayer(inviter), invited, message);
+        PluginMessages.getInstance().sendTellMessage(ChannelMember.getChannelMember(inviter), invited, message);
     }
 
     @EventHandler
@@ -236,7 +238,7 @@ public class LunaChatListener implements Listener {
         // length : 1   2       3
         // message: tell player message1 message2
         String[] args = message.split(" ", 3);
-        if (args.length == 2) {            
+        if (args.length == 2) {
             String player = args[1];
             List<String> players = PluginMessages.getInstance().getBungeePlayers();
             players.removeIf(playerName -> !StringUtil.startsWithIgnoreCase(playerName, player));

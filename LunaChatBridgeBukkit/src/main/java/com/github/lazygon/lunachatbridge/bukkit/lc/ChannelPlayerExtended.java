@@ -1,14 +1,15 @@
 package com.github.lazygon.lunachatbridge.bukkit.lc;
 
-import com.github.ucchyocean.lc.channel.ChannelPlayerName;
+import com.github.ucchyocean.lc3.member.ChannelMemberOther;
+import org.bukkit.Bukkit;
 
-public class ChannelPlayerExtended extends ChannelPlayerName {
+public class ChannelPlayerExtended extends ChannelMemberOther {
 
     private final String prefix;
     private final String suffix;
     private final String worldName;
     private final String displayName;
-    private boolean canUseColorCode;
+    private final boolean canUseColorCode;
 
     public ChannelPlayerExtended(String name, String prefix, String suffix, String worldName, String displayName, boolean canUseColorCode) {
         super(name);
@@ -32,7 +33,7 @@ public class ChannelPlayerExtended extends ChannelPlayerName {
     @Override
     public String getDisplayName() {
         if (isOnline()) {
-            return getPlayer().getDisplayName();
+            return Bukkit.getPlayer(getName()).getDisplayName();
         } else {
             return displayName;
         }

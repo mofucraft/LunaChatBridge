@@ -1,23 +1,18 @@
 package com.github.lazygon.lunachatbridge.bukkit.command;
 
+import com.github.lazygon.lunachatbridge.bukkit.BukkitMain;
+import com.github.lazygon.lunachatbridge.bukkit.config.BungeeChannels;
+import com.github.lazygon.lunachatbridge.bukkit.config.Messages;
+import com.github.ucchyocean.lc3.LunaChat;
+import com.github.ucchyocean.lc3.channel.Channel;
+import com.github.ucchyocean.lc3.member.ChannelMember;
+import org.bukkit.command.*;
+import org.bukkit.util.StringUtil;
+
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
-
-import com.github.lazygon.lunachatbridge.bukkit.BukkitMain;
-import com.github.lazygon.lunachatbridge.bukkit.config.BungeeChannels;
-import com.github.lazygon.lunachatbridge.bukkit.config.Messages;
-import com.github.ucchyocean.lc.LunaChat;
-import com.github.ucchyocean.lc.channel.Channel;
-import com.github.ucchyocean.lc.channel.ChannelPlayer;
-
-import org.bukkit.command.Command;
-import org.bukkit.command.CommandExecutor;
-import org.bukkit.command.CommandSender;
-import org.bukkit.command.PluginCommand;
-import org.bukkit.command.TabCompleter;
-import org.bukkit.util.StringUtil;
 
 public class LunaChatBridgeCommand implements CommandExecutor, TabCompleter {
 
@@ -46,7 +41,7 @@ public class LunaChatBridgeCommand implements CommandExecutor, TabCompleter {
     @Override
     public boolean onCommand(CommandSender sender, Command command, String label, String[] args) {
         // /lcb bungeechannel < add <channel> | remove <channel> | list >
-        
+
         if (args.length < 2) {
             MESSAGES.sendNotEnoughArgument(sender);
             return false;
@@ -66,7 +61,7 @@ public class LunaChatBridgeCommand implements CommandExecutor, TabCompleter {
 
             MESSAGES.sendMessage(sender, "command.lunachatbridge.bungeechannel.list-header");
             BungeeChannels.getInstance().getBungeeChannels().forEach(channel -> {
-                MESSAGES.sendMessage(sender, false, "command.lunachatbridge.bungeechannel.list-format", Map.of("%channel%", channel));                
+                MESSAGES.sendMessage(sender, false, "command.lunachatbridge.bungeechannel.list-format", Map.of("%channel%", channel));
             });
             return true;
         }
@@ -81,14 +76,14 @@ public class LunaChatBridgeCommand implements CommandExecutor, TabCompleter {
             if (!sender.hasPermission("lunachatbridge.bungeechannel.add")) {
                 if (!sender.hasPermission("lunachatbridge.bungeechannel.add.moderator")) {
                     MESSAGES.sendNoPermission(sender, "lunachatbridge.bungeechannel.add.moderator");
-                    return false;                
+                    return false;
                 }
-                
-                Channel channel = LunaChat.getInstance().getLunaChatAPI().getChannel(args[2]);
+
+                Channel channel = LunaChat.getAPI().getChannel(args[2]);
                 if (channel == null
-                        || channel.getModerator().stream().map(ChannelPlayer::getName).noneMatch(sender.getName()::equals)) {
+                        || channel.getModerator().stream().map(ChannelMember::getName).noneMatch(sender.getName()::equals)) {
                     MESSAGES.sendMessage(sender, "command.general.error.not-channel-moderator");
-                    return false;     
+                    return false;
                 }
             }
 
@@ -96,23 +91,23 @@ public class LunaChatBridgeCommand implements CommandExecutor, TabCompleter {
                 MESSAGES.sendMessage(sender, "command.lunachatbridge.bungeechannel.add-success", Map.of("%channel%", args[2]));
                 return true;
             }
-            
+
             MESSAGES.sendMessage(sender, "command.lunachatbridge.bungeechannel.add-failure", Map.of("%channel%", args[2]));
             return false;
         }
-        
+
         if (args[1].equalsIgnoreCase("remove")) {
             if (!sender.hasPermission("lunachatbridge.bungeechannel.remove")) {
                 if (!sender.hasPermission("lunachatbridge.bungeechannel.remove.moderator")) {
                     MESSAGES.sendNoPermission(sender, "lunachatbridge.bungeechannel.remove.moderator");
-                    return false;                
+                    return false;
                 }
-                
-                Channel channel = LunaChat.getInstance().getLunaChatAPI().getChannel(args[2]);
+
+                Channel channel = LunaChat.getAPI().getChannel(args[2]);
                 if (channel == null
-                        || channel.getModerator().stream().map(ChannelPlayer::getName).noneMatch(sender.getName()::equals)) {
+                        || channel.getModerator().stream().map(ChannelMember::getName).noneMatch(sender.getName()::equals)) {
                     MESSAGES.sendMessage(sender, "command.general.error.not-channel-moderator");
-                    return false;     
+                    return false;
                 }
             }
 
@@ -120,7 +115,7 @@ public class LunaChatBridgeCommand implements CommandExecutor, TabCompleter {
                 MESSAGES.sendMessage(sender, "command.lunachatbridge.bungeechannel.remove-success", Map.of("%channel%", args[2]));
                 return true;
             }
-            
+
             MESSAGES.sendMessage(sender, "command.lunachatbridge.bungeechannel.remove-failure", Map.of("%channel%", args[2]));
             return false;
         }
@@ -132,11 +127,11 @@ public class LunaChatBridgeCommand implements CommandExecutor, TabCompleter {
     @Override
     public List<String> onTabComplete(CommandSender sender, Command command, String alias, String[] args) {
         List<String> result = new ArrayList<>();
-        
+
         if (args.length == 1) {
             return StringUtil.copyPartialMatches(args[0], List.of("bungeechannel"), result);
         }
-        
+
         if (!args[0].equalsIgnoreCase("bungeechannel")) {
             return result;
         }
@@ -151,9 +146,9 @@ public class LunaChatBridgeCommand implements CommandExecutor, TabCompleter {
                 return result;
             }
             boolean hasPermissionAdd = sender.hasPermission("lunachatbridge.bungeechannel.add");
-            List<String> channels = LunaChat.getInstance().getLunaChatAPI().getChannels().stream()
-                    .filter(channel -> hasPermissionAdd || channel.getModerator().contains(ChannelPlayer.getChannelPlayer(sender)))
-                    .map(Channel::getName).collect(Collectors.toList()); 
+            List<String> channels = LunaChat.getAPI().getChannels().stream()
+                    .filter(channel -> hasPermissionAdd || channel.getModerator().contains(ChannelMember.getChannelMember(sender)))
+                    .map(Channel::getName).collect(Collectors.toList());
             return StringUtil.copyPartialMatches(args[2], channels, result);
         }
 
@@ -163,8 +158,8 @@ public class LunaChatBridgeCommand implements CommandExecutor, TabCompleter {
             }
             List<String> channels = BungeeChannels.getInstance().getBungeeChannels();
             if (!sender.hasPermission("lunachatbridge.bungeechannel.remove")) {
-                channels.removeIf(channelName -> !LunaChat.getInstance().getLunaChatAPI().getChannel(channelName).getModerator()
-                        .contains(ChannelPlayer.getChannelPlayer(sender)));
+                channels.removeIf(channelName -> !LunaChat.getAPI().getChannel(channelName).getModerator()
+                        .contains(ChannelMember.getChannelMember(sender)));
             }
             return StringUtil.copyPartialMatches(args[2], channels, result);
         }

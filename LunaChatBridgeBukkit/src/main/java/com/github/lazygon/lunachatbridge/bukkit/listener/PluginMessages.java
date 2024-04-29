@@ -1,24 +1,23 @@
 package com.github.lazygon.lunachatbridge.bukkit.listener;
 
+import com.github.lazygon.lunachatbridge.bukkit.config.BungeeChannels;
+import com.github.lazygon.lunachatbridge.bukkit.lc.ChannelPlayerExtended;
+import com.github.lazygon.lunachatbridge.bukkit.lc.DataMapsExtended;
+import com.github.ucchyocean.lc3.LunaChat;
+import com.github.ucchyocean.lc3.LunaChatAPI;
+import com.github.ucchyocean.lc3.Messages;
+import com.github.ucchyocean.lc3.channel.Channel;
+import com.github.ucchyocean.lc3.member.ChannelMember;
+import org.bukkit.Bukkit;
+import org.bukkit.entity.Player;
+import org.bukkit.plugin.messaging.PluginMessageListener;
+
 import java.io.ByteArrayInputStream;
 import java.io.DataInputStream;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
-
-import com.github.lazygon.lunachatbridge.bukkit.config.BungeeChannels;
-import com.github.lazygon.lunachatbridge.bukkit.lc.ChannelPlayerExtended;
-import com.github.lazygon.lunachatbridge.bukkit.lc.DataMapsExtended;
-import com.github.ucchyocean.lc.LunaChat;
-import com.github.ucchyocean.lc.LunaChatAPI;
-import com.github.ucchyocean.lc.Resources;
-import com.github.ucchyocean.lc.channel.Channel;
-import com.github.ucchyocean.lc.channel.ChannelPlayer;
-
-import org.bukkit.Bukkit;
-import org.bukkit.entity.Player;
-import org.bukkit.plugin.messaging.PluginMessageListener;
 
 public class PluginMessages implements PluginMessageListener {
 
@@ -57,9 +56,9 @@ public class PluginMessages implements PluginMessageListener {
                 in.close();
                 byteArrayIn.close();
 
-                boolean defaultJapanize = LunaChat.getInstance().getLunaChatAPI().isPlayerJapanize(playerName);
+                boolean defaultJapanize = LunaChat.getAPI().isPlayerJapanize(playerName);
                 if (japanize != defaultJapanize) {
-                    LunaChat.getInstance().getLunaChatAPI().setPlayersJapanize(playerName, japanize);
+                    LunaChat.getAPI().setPlayersJapanize(playerName, japanize);
                 }
 
                 // プライベートメッセージ
@@ -67,11 +66,11 @@ public class PluginMessages implements PluginMessageListener {
                     if (Bukkit.getPlayer(playerName) != null) {
                         return;
                     }
-                    String invited = channelName.substring(channelName.indexOf(">") + 1, channelName.length());
+                    String invited = channelName.substring(channelName.indexOf(">") + 1);
                     if (Bukkit.getPlayer(invited) == null) {
                         return;
                     }
-                    ChannelPlayer channelPlayer = new ChannelPlayerExtended(playerName, playerPrefix, playerSuffix,
+                    ChannelMember channelPlayer = new ChannelPlayerExtended(playerName, playerPrefix, playerSuffix,
                             worldName, playerDisplayName, canUseColorCode);
                     sendTellMessage(channelPlayer, invited, chatMessage);
                     return;
@@ -81,15 +80,15 @@ public class PluginMessages implements PluginMessageListener {
                     return;
                 }
 
-                ChannelPlayer channelPlayer = new ChannelPlayerExtended(playerName, playerPrefix, playerSuffix,
+                ChannelMember channelPlayer = new ChannelPlayerExtended(playerName, playerPrefix, playerSuffix,
                         worldName, playerDisplayName, canUseColorCode);
-                Channel lcChannel = LunaChat.getInstance().getLunaChatAPI().getChannel(channelName);
+                Channel lcChannel = LunaChat.getAPI().getChannel(channelName);
                 if (lcChannel != null) {
                     lcChannel.chat(channelPlayer, chatMessage);
                 }
 
                 if (japanize != defaultJapanize) {
-                    LunaChat.getInstance().getLunaChatAPI().setPlayersJapanize(playerName, defaultJapanize);
+                    LunaChat.getAPI().setPlayersJapanize(playerName, defaultJapanize);
                 }
 
             } else if (operation.equalsIgnoreCase("updateplayers")) {
@@ -107,7 +106,6 @@ public class PluginMessages implements PluginMessageListener {
             byteArrayIn.close();
         } catch (IOException e) {
             e.printStackTrace();
-            return;
         }
     }
 
@@ -117,25 +115,23 @@ public class PluginMessages implements PluginMessageListener {
 
     /**
      * Tellコマンドの実行処理を行う
-     * 
-     * @author ucchy
-     * 
+     *
      * @param inviter
      * @param invitedName
      * @param message
+     * @author ucchy
      */
-    protected void sendTellMessage(ChannelPlayer inviter, String invitedName, String message) {
-        String PREERR = Resources.get("errorPrefix");
-        ChannelPlayer invited = ChannelPlayer.getChannelPlayer(invitedName);
+    protected void sendTellMessage(ChannelMember inviter, String invitedName, String message) {
+        ChannelMember invited = ChannelMember.getChannelMember(invitedName);
 
         // 招待相手が自分自身でないか確認する
         if (inviter.getName().equals(invited.getName())) {
-            sendResourceMessage(inviter, PREERR, "errmsgCannotSendPMSelf");
+            inviter.sendMessage(Messages.errmsgCannotSendPMSelf());
             return;
         }
 
         // チャンネルが存在するかどうかをチェックする
-        LunaChatAPI api = LunaChat.getInstance().getLunaChatAPI();
+        LunaChatAPI api = LunaChat.getAPI();
         String cname = inviter.getName() + ">" + invited.getName();
         Channel channel = api.getChannel(cname);
         if (channel == null) {
@@ -144,7 +140,7 @@ public class PluginMessages implements PluginMessageListener {
             channel.setVisible(false);
             channel.addMember(inviter);
             channel.addMember(invited);
-            channel.setPrivateMessageTo(invited.getName());
+            channel.setPrivateMessageTo(ChannelMember.getChannelMember(invited.getName()));
 
         }
 
@@ -156,26 +152,5 @@ public class PluginMessages implements PluginMessageListener {
         // 送信履歴を残す
         DataMapsExtended.putIntoPMMap(invited.getName(), inviter.getName());
         DataMapsExtended.putIntoPMMap(inviter.getName(), invited.getName());
-        return;
-    }
-
-    /**
-     * メッセージリソースのメッセージを、カラーコード置き換えしつつ、senderに送信する
-     * 
-     * @author ucchy
-     * 
-     * @param cp   メッセージの送り先
-     * @param pre  プレフィックス
-     * @param key  リソースキー
-     * @param args リソース内の置き換え対象キーワード
-     */
-    protected void sendResourceMessage(ChannelPlayer cp, String pre, String key, Object... args) {
-
-        String org = Resources.get(key);
-        if (org == null || org.equals("")) {
-            return;
-        }
-        String msg = String.format(pre + org, args);
-        cp.sendMessage(msg);
     }
 }
