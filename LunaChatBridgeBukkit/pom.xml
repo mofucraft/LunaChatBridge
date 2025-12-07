@@ -12,26 +12,25 @@
 
     <repositories>
         <repository>
-            <id>spigot-repo</id>
-            <url>https://hub.spigotmc.org/nexus/content/repositories/snapshots/</url>
-        </repository>
-        <repository>
-            <id>jitpack.io</id>
-            <url>https://jitpack.io</url>
+            <id>papermc</id>
+            <url>https://repo.papermc.io/repository/maven-public/</url>
         </repository>
     </repositories>
 
     <dependencies>
+        <!-- Paper API (Adventure API 内蔵) -->
         <dependency>
-            <groupId>org.spigotmc</groupId>
-            <artifactId>spigot-api</artifactId>
-            <version>1.14.4-R0.1-SNAPSHOT</version>
+            <groupId>io.papermc.paper</groupId>
+            <artifactId>paper-api</artifactId>
+            <version>1.21-R0.1-SNAPSHOT</version>
             <scope>provided</scope>
         </dependency>
+        <!-- LunaChat from mavenLocal -->
         <dependency>
-            <groupId>com.github.mofucraft</groupId>
+            <groupId>com.github.ucchyocean</groupId>
             <artifactId>LunaChat</artifactId>
             <version>3.1.7</version>
+            <scope>provided</scope>
         </dependency>
     </dependencies>
 

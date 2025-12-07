@@ -1,13 +1,18 @@
 package com.github.lazygon.lunachatbridge.bukkit.listener;
 
 import com.github.lazygon.lunachatbridge.bukkit.BukkitMain;
+import com.github.lazygon.lunachatbridge.bukkit.config.BridgeConfig;
 import com.github.lazygon.lunachatbridge.bukkit.config.BungeeChannels;
 import com.github.lazygon.lunachatbridge.bukkit.lc.DataMapsExtended;
 import com.github.ucchyocean.lc.channel.ChannelPlayer;
 import com.github.ucchyocean.lc.event.LunaChatChannelChatEvent;
 import com.github.ucchyocean.lc3.LunaChat;
+import com.github.ucchyocean.lc3.LunaChatBukkit;
 import com.github.ucchyocean.lc3.bukkit.event.LunaChatBukkitChannelChatEvent;
 import com.github.ucchyocean.lc3.member.ChannelMember;
+import com.github.ucchyocean.lc3.member.ChannelMemberBukkit;
+import net.kyori.adventure.text.Component;
+import net.kyori.adventure.text.minimessage.MiniMessage;
 import org.bukkit.Bukkit;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
@@ -20,12 +25,15 @@ import org.bukkit.util.StringUtil;
 
 import java.io.ByteArrayOutputStream;
 import java.io.DataOutputStream;
+import java.lang.reflect.Method;
 import java.util.List;
 
 public class LunaChatListener implements Listener {
 
     private static final BukkitMain PLUGIN = BukkitMain.getInstance();
     private static final LunaChatListener INSTANCE = new LunaChatListener();
+    private static final MiniMessage MINI_MESSAGE = MiniMessage.miniMessage();
+    private static final int PROTOCOL_VERSION = 2;
 
     private LunaChatListener() {
     }
@@ -39,7 +47,7 @@ public class LunaChatListener implements Listener {
     }
 
     @EventHandler
-    private void onChat(LunaChatBukkitChannelChatEvent event) {
+    public void onChat(LunaChatBukkitChannelChatEvent event) {
         if (!event.getMember().isOnline()) {
             return;
         }
@@ -53,6 +61,9 @@ public class LunaChatListener implements Listener {
             ByteArrayOutputStream byteOutStream = new ByteArrayOutputStream();
             DataOutputStream out = new DataOutputStream(byteOutStream);
 
+            // プロトコルバージョン (v2)
+            out.writeInt(PROTOCOL_VERSION);
+
             // 操作
             out.writeUTF("chat");
 
@@ -62,8 +73,13 @@ public class LunaChatListener implements Listener {
             // プレイヤー名
             out.writeUTF(event.getMember().getName());
 
-            // プレイヤー表示名
+            // プレイヤー表示名 (プレーンテキスト - 後方互換用)
             out.writeUTF(event.getMember().getDisplayName());
+
+            // プレイヤー表示名 (MiniMessage形式 - shadow/outline等を保持)
+            Component displayNameComponent = getDisplayNameComponentSafe(event.getMember());
+            String displayNameMiniMessage = MINI_MESSAGE.serialize(displayNameComponent);
+            out.writeUTF(displayNameMiniMessage);
 
             // プレイヤープレフィックス
             out.writeUTF(event.getMember().getPrefix());
@@ -74,8 +90,9 @@ public class LunaChatListener implements Listener {
             // プレイヤーのいるワールド
             out.writeUTF(event.getMember().getWorldName());
 
-            // メッセージ
-            out.writeUTF(event.getPreReplaceMessage());
+            // メッセージ (PAPI処理済み)
+            String processedMessage = processPlaceholders(event);
+            out.writeUTF(processedMessage);
 
             // 日本語化するかどうか
             out.writeBoolean(LunaChat.getAPI().isPlayerJapanize(event.getMember().getName()));
@@ -89,6 +106,76 @@ public class LunaChatListener implements Listener {
         } catch (Exception e) {
             e.printStackTrace();
         }
+    }
+
+    /**
+     * PlaceholderAPIを使用してメッセージ内のプレースホルダーを処理する
+     * 未解決のプレースホルダーは設定に応じて除去する
+     */
+    private String processPlaceholders(LunaChatBukkitChannelChatEvent event) {
+        String message = event.getPreReplaceMessage();
+
+        // PlaceholderAPIが有効な場合、プレースホルダーを処理
+        if (LunaChatBukkit.getInstance().enablePlaceholderAPI()) {
+            ChannelMember member = event.getMember();
+            if (member instanceof ChannelMemberBukkit) {
+                Player player = ((ChannelMemberBukkit) member).getPlayer();
+                if (player != null) {
+                    message = setPlaceholders(player, message);
+                }
+            }
+        }
+
+        // 未解決のプレースホルダーを除去
+        if (BridgeConfig.getInstance().isStripUnresolved()) {
+            message = stripUnresolvedPlaceholders(message);
+        }
+
+        return message;
+    }
+
+    /**
+     * PlaceholderAPIを使用してプレースホルダーを置換する
+     * リフレクションを使用して直接の依存関係を避ける
+     */
+    private String setPlaceholders(Player player, String text) {
+        try {
+            Class<?> papiClass = Class.forName("me.clip.placeholderapi.PlaceholderAPI");
+            Method setPlaceholders = papiClass.getMethod("setPlaceholders", org.bukkit.OfflinePlayer.class, String.class);
+            return (String) setPlaceholders.invoke(null, player, text);
+        } catch (Exception e) {
+            // PlaceholderAPIが見つからない場合は元のテキストを返す
+            return text;
+        }
+    }
+
+    /**
+     * 未解決のプレースホルダー (%xxx%) を除去する
+     */
+    private String stripUnresolvedPlaceholders(String message) {
+        return message.replaceAll("%[a-zA-Z0-9_]+%", "");
+    }
+
+    /**
+     * ChannelMemberからDisplayNameComponentを安全に取得する
+     * getDisplayNameComponent()メソッドが存在しない場合はフォールバック
+     */
+    private Component getDisplayNameComponentSafe(ChannelMember member) {
+        try {
+            // リフレクションでgetDisplayNameComponent()を呼び出し
+            Method method = member.getClass().getMethod("getDisplayNameComponent");
+            Object result = method.invoke(member);
+            if (result instanceof Component) {
+                return (Component) result;
+            }
+        } catch (NoSuchMethodException e) {
+            // メソッドが存在しない場合はフォールバック
+        } catch (Exception e) {
+            // その他のエラー
+            e.printStackTrace();
+        }
+        // フォールバック: プレーンテキストのDisplayNameをComponentに変換
+        return Component.text(member.getDisplayName());
     }
 
     /**

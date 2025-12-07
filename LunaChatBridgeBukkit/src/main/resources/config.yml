@@ -1,0 +1,19 @@
+# LunaChatBridge Configuration
+
+# PlaceholderAPI settings
+placeholder:
+  # Remove unresolved placeholders (%xxx%) from messages
+  # This prevents raw placeholders like %mofucommunity_prefix% from being displayed
+  strip-unresolved: true
+
+# Server filtering (for sending messages)
+server-filter:
+  # Enable server filtering
+  enabled: false
+  # true: whitelist mode (only send to listed servers)
+  # false: blacklist mode (send to all servers except listed)
+  whitelist-mode: true
+  # List of servers to filter
+  servers:
+    - lobby
+    - survival
