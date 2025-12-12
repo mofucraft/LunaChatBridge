@@ -3,7 +3,9 @@ package com.github.lazygon.lunachatbridge.bukkit.lc;
 import com.github.ucchyocean.lc3.member.ChannelMemberOther;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.minimessage.MiniMessage;
+import net.kyori.adventure.text.serializer.legacy.LegacyComponentSerializer;
 import org.bukkit.Bukkit;
+import org.bukkit.entity.Player;
 
 public class ChannelPlayerExtended extends ChannelMemberOther {
 
@@ -29,6 +31,11 @@ public class ChannelPlayerExtended extends ChannelMemberOther {
     }
 
     @Override
+    public boolean isOnline() {
+        return Bukkit.getPlayer(getName()) != null;
+    }
+
+    @Override
     public String getPrefix() {
         return prefix;
     }
@@ -40,11 +47,12 @@ public class ChannelPlayerExtended extends ChannelMemberOther {
 
     @Override
     public String getDisplayName() {
-        if (isOnline()) {
-            return Bukkit.getPlayer(getName()).getDisplayName();
-        } else {
-            return displayName;
+        Player player = Bukkit.getPlayer(getName());
+        if (player != null) {
+            // Adventure API の displayName() を使用し、レガシー形式に変換
+            return LegacyComponentSerializer.legacySection().serialize(player.displayName());
         }
+        return displayName;
     }
 
     /**
@@ -53,9 +61,10 @@ public class ChannelPlayerExtended extends ChannelMemberOther {
      */
     @Override
     public Component getDisplayNameComponent() {
-        if (isOnline()) {
-            // オンラインの場合は、Bukkitから直接取得
-            return Bukkit.getPlayer(getName()).displayName();
+        // このサーバーにオンラインの場合は、Bukkitから直接取得
+        Player player = Bukkit.getPlayer(getName());
+        if (player != null) {
+            return player.displayName();
         }
 
         // キャッシュがあればそれを返す
@@ -63,7 +72,7 @@ public class ChannelPlayerExtended extends ChannelMemberOther {
             return displayNameComponentCache;
         }
 
-        // MiniMessage形式からComponentを生成
+        // MiniMessage形式からComponentを生成 (shadow等の装飾を復元)
         if (displayNameMiniMessage != null && !displayNameMiniMessage.isEmpty()) {
             try {
                 displayNameComponentCache = MINI_MESSAGE.deserialize(displayNameMiniMessage);

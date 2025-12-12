@@ -1,20 +1,16 @@
 package com.github.lazygon.lunachatbridge.bukkit.listener;
 
 import com.github.lazygon.lunachatbridge.bukkit.BukkitMain;
-import com.github.lazygon.lunachatbridge.bukkit.config.BridgeConfig;
 import com.github.lazygon.lunachatbridge.bukkit.config.BungeeChannels;
 import com.github.lazygon.lunachatbridge.bukkit.lc.DataMapsExtended;
 import com.github.ucchyocean.lc.channel.ChannelPlayer;
 import com.github.ucchyocean.lc.event.LunaChatChannelChatEvent;
 import com.github.ucchyocean.lc3.LunaChat;
-import com.github.ucchyocean.lc3.LunaChatBukkit;
 import com.github.ucchyocean.lc3.bukkit.event.LunaChatBukkitChannelChatEvent;
 import com.github.ucchyocean.lc3.member.ChannelMember;
-import com.github.ucchyocean.lc3.member.ChannelMemberBukkit;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.minimessage.MiniMessage;
 import org.bukkit.Bukkit;
-import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.HandlerList;
 import org.bukkit.event.Listener;
@@ -90,9 +86,8 @@ public class LunaChatListener implements Listener {
             // プレイヤーのいるワールド
             out.writeUTF(event.getMember().getWorldName());
 
-            // メッセージ (PAPI処理済み)
-            String processedMessage = processPlaceholders(event);
-            out.writeUTF(processedMessage);
+            // メッセージ (LunaChat側でPAPI処理済み)
+            out.writeUTF(event.getPreReplaceMessage());
 
             // 日本語化するかどうか
             out.writeBoolean(LunaChat.getAPI().isPlayerJapanize(event.getMember().getName()));
@@ -106,54 +101,6 @@ public class LunaChatListener implements Listener {
         } catch (Exception e) {
             e.printStackTrace();
         }
-    }
-
-    /**
-     * PlaceholderAPIを使用してメッセージ内のプレースホルダーを処理する
-     * 未解決のプレースホルダーは設定に応じて除去する
-     */
-    private String processPlaceholders(LunaChatBukkitChannelChatEvent event) {
-        String message = event.getPreReplaceMessage();
-
-        // PlaceholderAPIが有効な場合、プレースホルダーを処理
-        if (LunaChatBukkit.getInstance().enablePlaceholderAPI()) {
-            ChannelMember member = event.getMember();
-            if (member instanceof ChannelMemberBukkit) {
-                Player player = ((ChannelMemberBukkit) member).getPlayer();
-                if (player != null) {
-                    message = setPlaceholders(player, message);
-                }
-            }
-        }
-
-        // 未解決のプレースホルダーを除去
-        if (BridgeConfig.getInstance().isStripUnresolved()) {
-            message = stripUnresolvedPlaceholders(message);
-        }
-
-        return message;
-    }
-
-    /**
-     * PlaceholderAPIを使用してプレースホルダーを置換する
-     * リフレクションを使用して直接の依存関係を避ける
-     */
-    private String setPlaceholders(Player player, String text) {
-        try {
-            Class<?> papiClass = Class.forName("me.clip.placeholderapi.PlaceholderAPI");
-            Method setPlaceholders = papiClass.getMethod("setPlaceholders", org.bukkit.OfflinePlayer.class, String.class);
-            return (String) setPlaceholders.invoke(null, player, text);
-        } catch (Exception e) {
-            // PlaceholderAPIが見つからない場合は元のテキストを返す
-            return text;
-        }
-    }
-
-    /**
-     * 未解決のプレースホルダー (%xxx%) を除去する
-     */
-    private String stripUnresolvedPlaceholders(String message) {
-        return message.replaceAll("%[a-zA-Z0-9_]+%", "");
     }
 
     /**
